@@ -1,10 +1,19 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// ignore: library_prefixes
+import 'package:crypto/crypto.dart' as hashChecker;
 
-String? file;
+String? filePath;
+var fileHash;
 var filePickerProvider = StateProvider((ref) {
-  return file;
+  return filePath;
+});
+
+var hashProvider = StateProvider((ref) {
+  return fileHash;
 });
 
 void main() {
@@ -17,6 +26,7 @@ class FileHashChkScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final watchFilePat = ref.watch(filePickerProvider);
+    final watchHash = ref.watch(hashProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('File Hash Chk'),
@@ -28,13 +38,26 @@ class FileHashChkScreen extends ConsumerWidget {
             Text(
               'FilePath : $watchFilePat',
             ),
+            Text(
+              'FileHash : $watchHash',
+            ),
             ElevatedButton(
                 onPressed: () async {
                   var pickFilePath = FilePicker.platform.pickFiles();
                   await pickFilePath.then((value) {
-                    file = value?.files.single.path;
+                    filePath = value?.files.single.path;
                   });
-                  ref.read(filePickerProvider.notifier).update((state) => file);
+
+                  var converStringToFile = File(filePath!);
+                  if (converStringToFile.toString().isEmpty) return;
+
+                  fileHash = await hashChecker.md5
+                      .bind(converStringToFile.openRead())
+                      .first;
+                  ref.read(hashProvider.notifier).state = fileHash;
+                  ref
+                      .read(filePickerProvider.notifier)
+                      .update((state) => filePath);
                 },
                 child: const Text('Pick File'))
           ],
